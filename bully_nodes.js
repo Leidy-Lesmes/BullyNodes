@@ -85,27 +85,35 @@ axios.post('http://localhost:4000/register-node', {
         // Solicitar información de liderazgo al monitor solo si está activo
         if (isActive()) {
             axios.get('http://localhost:4000/leader-info')
-            .then((response) => {
-                const { leaderUrl } = response.data;
-                console.log("Información de liderazgo recibida del monitor:", leaderUrl);
+    .then((response) => {
+        const { leaderUrl } = response.data;
+        console.log("Información de liderazgo recibida del monitor:", leaderUrl);
 
-                // Llamar a la función para hacer ping al líder después de recibir la URL del líder
-                pingLeader(leaderUrl);
+        // Asignar leaderUrl a leader_url
+        leader_url = leaderUrl;
 
-                // Actualizar la URL del líder en el nodo
-                axios.post('http://localhost:4000/leader-update', {
-                    leader: leaderUrl
-                })
-                .then((response) => {
-                    console.log("Respuesta al actualizar la URL del líder:", response.data);
-                })
-                .catch((error) => {
-                    console.error("Error al actualizar la URL del líder:", error.message);
-                });
-            })
-            .catch((error) => {
-                console.error("Error al solicitar información de liderazgo al monitor:", error.message);
-            });
+        // Llamar a la función para hacer ping al líder después de recibir la URL del líder
+        pingLeader(leaderUrl);
+
+        // Actualizar la URL del líder en el nodo
+        axios.post('http://localhost:4000/leader-update', {
+            leader: leaderUrl
+        })
+        .then((response) => {
+            console.log("Respuesta al actualizar la URL del líder:", response.data);
+        
+            // Llamar a la función para hacer ping al líder después de actualizar la URL del líder en el nodo
+            pingLeader(leaderUrl);
+        })
+        .catch((error) => {
+            console.error("Error al actualizar la URL del líder:", error.message);
+        });
+        
+    })
+    .catch((error) => {
+        console.error("Error al solicitar información de liderazgo al monitor:", error.message);
+    });
+
         }
         
     })
@@ -127,10 +135,10 @@ app.post('/update-server-list', (req, res) => {
 
 // Función para hacer ping al líder
 function pingLeader(leaderUrl) {
-    if (isActive()) {
-        if (leader_url) {
-            console.log('Configuración de la petición HTTP:', axios.get(leader_url).config);
-            axios.get(leader_url + '/ping') // Agrega '/ping' al final de la URL del líder
+    if (isActive() && clientUrl !== leaderUrl) {
+        if (leaderUrl) {
+            console.log('Ping al líder:', leaderUrl + '/ping-leader desde : ' + clientUrl);
+            axios.get(leaderUrl + '/ping') // Agrega '/ping' al final de la URL del líder
                 .then((response) => {
                     console.log('Ping al líder exitoso:', response.data);
                 })
@@ -141,9 +149,11 @@ function pingLeader(leaderUrl) {
             console.log('No se ha recibido la URL del líder aún.');
         }
     } else {
-        console.log('El nodo está inactivo');
+        console.log('El nodo está inactivo o es el líder');
     }
 }
+
+
 
 const pingInterval = 5000; // 5 segundos
 
@@ -164,10 +174,7 @@ app.get('/ping-leader', (req, res) => {
 
 // Ruta para cambiar el estado del nodo a "inactivo"
 app.post('/set-inactive', (req, res) => {
-    // Cambiar el estado del nodo a "inactivo"
     status = 'inactivo';
-    
-    // Enviar una respuesta de éxito
     res.status(200).send('El estado del nodo se ha cambiado a "inactivo"');
 })
 
