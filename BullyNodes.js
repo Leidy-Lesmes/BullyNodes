@@ -41,8 +41,6 @@ async function updateNodesList() {
 
         // Verificar si este nodo ya está marcado como líder en la lista de nodos
         const currentNode = NODES.find(node => node.clientUrl === clientUrl);
-        console.log('Nodo actual:', currentNode);
-        console.log('Nodos: ', NODES);
 
         if (!currentNode || !imLeader) {
             console.log('Verificando si este nodo debería ser líder...');
@@ -52,15 +50,14 @@ async function updateNodesList() {
             console.log('¿Ningún otro nodo es líder?', noOtherLeader);
             if (noOtherLeader) {
                 console.log('No hay nodos con ID mayor y ningún otro nodo es líder. Este nodo es el nuevo líder.');
-                imLeader = true; // Cambio la variable imLeader a true
+                imLeader = true;
                 NODES = NODES.map(node => {
                     if (node.id === NODE_ID) {
                         return { ...node, imLeader: true };
                     }
                     return node;
                 });
-                console.log(imLeader);
-                console.log('Port ', PORT, ' IP ', NODE_IP, ' ID ', NODE_ID, ' SWS ', IP_SW, ' url client ', clientUrl,' is leader ', imLeader);
+                
                 console.log('Nodos: ', NODES);
                 socket.emit('update-node-info', { clientUrl, imLeader });
                 
@@ -89,6 +86,12 @@ socket.on('connect', () => {
     });
 
     updateNodesList();
+});
+
+socket.on('servers_list', (servers) => {
+    console.log('Lista de servidores actualizada recibida:', servers);
+    NODES = servers;
+    console.log('Lista de nodos actualizada', NODES);
 });
 
 socket.on('connect_error', (error) => {
