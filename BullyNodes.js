@@ -71,7 +71,7 @@ async function updateNodesList() {
         if (leaderNode && leaderNode.clientUrl !== clientUrl) {
             // Si hay un líder en la lista de nodos y no es este nodo, realizar el ping al nodo líder
             console.log(`Identificado un líder en la lista de nodos: ${leaderNode.clientUrl}`);
-            const randomTimeInSeconds = Math.floor(Math.random() * (10 - 2 + 1) + 10);
+            const randomTimeInSeconds = Math.floor(Math.random() * (5 - 2 + 1) + 10);
             console.log(`Ping al nodo líder después de ${randomTimeInSeconds} segundos.`);
 
             // Realizar el ping al nodo líder
@@ -85,7 +85,6 @@ async function updateNodesList() {
                     // TODO: Implementar lógica para proponer una nueva elección de líder
                 });
         }
-
     } catch (error) {
         console.error(`Error al actualizar la lista de nodos: ${error.message}`);
     }
@@ -161,8 +160,6 @@ app.get('/pingLeader', (req, res) => {
         res.end('pong');
         console.log('Ping recibido en el líder.');
         res.status(200).send('Ping al líder recibido correctamente.');
-    } else {
-        res.writeHead(403);
     }
 });
 
