@@ -57,17 +57,35 @@ async function updateNodesList() {
                     }
                     return node;
                 });
-                
-                console.log('Nodos: ', NODES);
+
                 socket.emit('update-node-info', { clientUrl, imLeader });
-                
+
             } else {
                 console.log('Este nodo ya está marcado como líder en la lista de nodos o hay otros líderes.');
             }
         } else {
             console.log('Este nodo ya está marcado como líder en la lista de nodos.');
         }
-        
+        // Verificar si este nodo identifica un líder en la lista de nodos
+        const leaderNode = NODES.find(node => node.imLeader);
+        if (leaderNode && leaderNode.clientUrl !== clientUrl) {
+            // Si hay un líder en la lista de nodos y no es este nodo, realizar el ping al nodo líder
+            console.log(`Identificado un líder en la lista de nodos: ${leaderNode.clientUrl}`);
+            const randomTimeInSeconds = Math.floor(Math.random() * (10 - 2 + 1) + 10);
+            console.log(`Ping al nodo líder después de ${randomTimeInSeconds} segundos.`);
+
+            // Realizar el ping al nodo líder
+            axios.get(`${leaderNode.clientUrl}/pingLeader`)
+                .then(response => {
+                    console.log('Ping al nodo líder exitoso.');
+                })
+                .catch(error => {
+                    console.error(`No se recibió respuesta del nodo líder: ${error.message}`);
+                    console.log('Proponiendo una nueva elección de líder...');
+                    // TODO: Implementar lógica para proponer una nueva elección de líder
+                });
+        }
+
     } catch (error) {
         console.error(`Error al actualizar la lista de nodos: ${error.message}`);
     }
@@ -89,9 +107,8 @@ socket.on('connect', () => {
 });
 
 socket.on('servers_list', (servers) => {
-    console.log('Lista de servidores actualizada recibida:', servers);
     NODES = servers;
-    console.log('Lista de nodos actualizada', NODES);
+    console.log('Lista de nodos actualizada');
 });
 
 socket.on('connect_error', (error) => {
@@ -140,8 +157,13 @@ function isAnyNodeLeader() {
 
 // Endpoint para el ping del líder
 app.get('/pingLeader', (req, res) => {
-    console.log('Ping recibido en el líder.');
-    res.status(200).send('Ping al líder recibido correctamente.');
+    if (imActive) {
+        res.end('pong');
+        console.log('Ping recibido en el líder.');
+        res.status(200).send('Ping al líder recibido correctamente.');
+    } else {
+        res.writeHead(403);
+    }
 });
 
 // Función para realizar el ping al nodo líder después de un tiempo aleatorio
