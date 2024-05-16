@@ -17,6 +17,7 @@ const NODE_ID = process.env.NODE_ID;
 const IP_SW = process.env.IP_SW || 'http://localhost:4000';
 
 const clientUrl = `http://${NODE_IP}:${PORT}`;
+const leaderNode = { clientUrl: null };
 let imLeader = false;
 let imActive = true;
 let NODES = [];
@@ -71,9 +72,7 @@ async function updateNodesList() {
         if (leaderNode && leaderNode.clientUrl !== clientUrl) {
             // Si hay un líder en la lista de nodos y no es este nodo, realizar el ping al nodo líder
             console.log(`Identificado un líder en la lista de nodos: ${leaderNode.clientUrl}`);
-            const randomTimeInSeconds = Math.floor(Math.random() * (10 - 2 + 1) + 10);
-            console.log(`Ping al nodo líder después de ${randomTimeInSeconds} segundos.--`);
-
+    
             // Llamado a la función para programar el ping al líder después de un tiempo aleatorio
              pingLeaderAfterRandomTime();
             // Realizar el ping al nodo líder
@@ -166,8 +165,6 @@ app.get('/pingLeader', (req, res) => {
     }
 });
 
-
-
 // Función para realizar el ping al nodo líder después de un tiempo aleatorio
 function pingLeaderAfterRandomTime() {
     const randomTimeInSeconds = Math.floor(Math.random() * (10 - 2 + 1) + 10);
@@ -185,6 +182,7 @@ function pingLeaderAfterRandomTime() {
                     console.error(`No se recibió respuesta del nodo líder ${leaderNode.clientUrl}: ${error.message}`);
                     console.log('Proponiendo una nueva elección de líder...');
                     // TODO: Implementar lógica para proponer una nueva elección de líder
+                    proposeLeaderElection();
                 });
         } else {
             console.error('No se encontró el nodo líder.');
@@ -193,9 +191,10 @@ function pingLeaderAfterRandomTime() {
         // Registrar la URL del líder y la URL del nodo que está realizando el ping
         console.log(`URL del líder: ${leaderNode ? leaderNode.clientUrl : 'N/A'}`);
         console.log(`URL del nodo que está realizando el ping: ${clientUrl}`);
+
+        pingLeaderAfterRandomTime();
     }, randomTimeInSeconds * 1000);
 }
-
 
 
 // Verificar si soy el líder antes de programar el ping al nodo líder
@@ -206,6 +205,73 @@ if (!imLeader && isAnyNodeLeader()) {
 function getCurrentTime() {
     return new Date().toLocaleTimeString();
 }
+
+const TIMEOUT_DELAY = 5000; // Tiempo de espera en milisegundos (por ejemplo, 5000 para 5 segundos)
+
+// Función para proponer una nueva elección de líder
+function proposeLeaderElection() {
+    console.log(`Nodo ${clientUrl} proponiendo una nueva elección de líder...`);
+
+    // Obtener nodos con un ID mayor y que no sean líderes
+    const higherNodes = NODES.filter(node => parseInt(node.id) > parseInt(NODE_ID) && !node.imLeader);
+
+    // Enviar solicitud de elección de líder a los nodos con un ID mayor
+    higherNodes.forEach(node => {
+        axios.post(`${node.clientUrl}/leader-election-proposal`, { proposerUrl: clientUrl })
+            .then(response => {
+                console.log(`Respuesta del nodo ${node.clientUrl}: ${response.data}`);
+            })
+            .catch(error => {
+                console.error(`Error al enviar solicitud de elección de líder al nodo ${node.clientUrl}: ${error.message}`);
+            });
+    });
+
+    // Si no hay nodos con IDs mayores o ningún nodo responde, establecer imLeader = true para el nodo que está solicitando la elección
+    setTimeout(() => {
+        if (!higherNodes.length) {
+            imLeader = true;
+            console.log(`Nodo ${clientUrl} se establece como líder porque no hay nodos con IDs mayores.`);
+        
+            // Asignar la URL del nuevo líder a leaderNode.clientUrl
+            leaderNode.clientUrl = clientUrl;
+
+            // Establecer imLeader y clientUrl en true para el nuevo líder
+            imLeader = true;
+
+            // Actualizar la propiedad imLeader y clientUrl en el nodo que se establece como líder
+            NODES = NODES.map(node => {
+                if (node.clientUrl === clientUrl) {
+                    return { ...node, imLeader: true, clientUrl: true };
+                }
+                return node;
+            });
+            // Emitir un evento para informar a los demás nodos sobre el nuevo líder
+            socket.emit('update-node-info', { clientUrl, imLeader });
+        }
+    }, TIMEOUT_DELAY); // TIMEOUT_DELAY es un valor de tiempo de espera para recibir respuestas de los nodos
+}
+
+// Endpoint para manejar la solicitud de propuesta de elección de líder
+app.post('/leader-election-proposal', (req, res) => {
+    const proposerUrl = req.body.proposerUrl;
+    console.log(`Solicitud de elección de líder recibida de ${proposerUrl}`);
+
+    // Responder con "OK estoy en la elección"
+    res.status(200).send('OK estoy en la elección');
+
+    // Verificar si existen IDs mayores al ID del nodo actual
+    const higherNodesExist = NODES.some(node => parseInt(node.id) > parseInt(NODE_ID));
+
+    if (higherNodesExist) {
+        // Continuar la propuesta de elección con nodos de ID aún más alto
+        proposeLeaderElection();
+    } else {
+        // Si no hay nodos con IDs mayores, establecer imLeader = true para el nodo que está solicitando la elección
+        imLeader = true;
+        console.log(`Nodo ${clientUrl} se establece como líder porque no hay nodos con IDs mayores.`);
+    }
+});
+
 
 const server = http.createServer(app);
 server.listen(PORT, () => {
