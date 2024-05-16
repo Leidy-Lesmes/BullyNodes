@@ -62,6 +62,7 @@ async function updateNodesList() {
                 console.log(imLeader);
                 console.log('Port ', PORT, ' IP ', NODE_IP, ' ID ', NODE_ID, ' SWS ', IP_SW, ' url client ', clientUrl,' is leader ', imLeader);
                 console.log('Nodos: ', NODES);
+                socket.emit('update-node-info', { clientUrl, imLeader });
                 
             } else {
                 console.log('Este nodo ya está marcado como líder en la lista de nodos o hay otros líderes.');
