@@ -87,7 +87,6 @@ async function updateNodesList() {
                     // TODO: Implementar lógica para proponer una nueva elección de líder
                 });
         }
-
     } catch (error) {
         console.error(`Error al actualizar la lista de nodos: ${error.message}`);
     }
