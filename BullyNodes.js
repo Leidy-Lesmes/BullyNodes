@@ -38,6 +38,7 @@ async function updateNodesList() {
         NODES = servers;
         console.log('Lista de nodos actualizada', NODES);
         isAnyNodeLeader();
+
         // Verificar si este nodo ya está marcado como líder en la lista de nodos
         const currentNode = NODES.find(node => node.clientUrl === clientUrl);
         console.log('Nodo actual:', currentNode);
@@ -51,7 +52,7 @@ async function updateNodesList() {
             console.log('¿Ningún otro nodo es líder?', noOtherLeader);
             if (noOtherLeader) {
                 console.log('No hay nodos con ID mayor y ningún otro nodo es líder. Este nodo es el nuevo líder.');
-                imLeader = true;
+                imLeader = true; // Cambio la variable imLeader a true
                 NODES = NODES.map(node => {
                     if (node.id === NODE_ID) {
                         return { ...node, imLeader: true };
@@ -59,13 +60,16 @@ async function updateNodesList() {
                     return node;
                 });
                 console.log(imLeader);
-            } else {
+                console.log('Port ', PORT, ' IP ', NODE_IP, ' ID ', NODE_ID, ' SWS ', IP_SW, ' url client ', clientUrl,' is leader ', imLeader);
+                console.log('Nodos: ', NODES);
                 
+            } else {
                 console.log('Este nodo ya está marcado como líder en la lista de nodos o hay otros líderes.');
             }
         } else {
             console.log('Este nodo ya está marcado como líder en la lista de nodos.');
         }
+        
     } catch (error) {
         console.error(`Error al actualizar la lista de nodos: ${error.message}`);
     }
@@ -132,7 +136,6 @@ function isAnyNodeLeader() {
 
 // Endpoint para el ping del líder
 app.get('/pingLeader', (req, res) => {
-    // Lógica para manejar el ping del líder aquí
     console.log('Ping recibido en el líder.');
     res.status(200).send('Ping al líder recibido correctamente.');
 });
