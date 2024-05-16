@@ -72,8 +72,10 @@ async function updateNodesList() {
             // Si hay un líder en la lista de nodos y no es este nodo, realizar el ping al nodo líder
             console.log(`Identificado un líder en la lista de nodos: ${leaderNode.clientUrl}`);
             const randomTimeInSeconds = Math.floor(Math.random() * (10 - 2 + 1) + 10);
-            console.log(`Ping al nodo líder después de ${randomTimeInSeconds} segundos.`);
+            console.log(`Ping al nodo líder después de ${randomTimeInSeconds} segundos.--`);
 
+            // Llamado a la función para programar el ping al líder después de un tiempo aleatorio
+             pingLeaderAfterRandomTime();
             // Realizar el ping al nodo líder
             axios.get(`${leaderNode.clientUrl}/pingLeader`)
                 .then(response => {
@@ -158,13 +160,14 @@ function isAnyNodeLeader() {
 // Endpoint para el ping del líder
 app.get('/pingLeader', (req, res) => {
     if (imActive) {
-        res.end('pong');
         console.log('Ping recibido en el líder.');
         res.status(200).send('Ping al líder recibido correctamente.');
     } else {
-        res.writeHead(403);
+        res.status(403).send('Forbidden');
     }
 });
+
+
 
 // Función para realizar el ping al nodo líder después de un tiempo aleatorio
 function pingLeaderAfterRandomTime() {
@@ -173,20 +176,28 @@ function pingLeaderAfterRandomTime() {
 
     setTimeout(() => {
         const leaderNode = NODES.find(node => node.imLeader);
-
         if (leaderNode) {
+            // Realizar el ping al líder
             axios.get(`${leaderNode.clientUrl}/pingLeader`)
                 .then(response => {
-                    console.log(`Ping al nodo líder (${leaderNode.clientUrl}) exitoso.`);
+                    console.log(`Nodo ${clientUrl} hizo ping al líder ${leaderNode.clientUrl} y obtuvo ${response.data}`);
                 })
                 .catch(error => {
-                    console.error(`Error en el ping al nodo líder (${leaderNode.clientUrl}): ${error.message}`);
+                    console.error(`No se recibió respuesta del nodo líder ${leaderNode.clientUrl}: ${error.message}`);
+                    console.log('Proponiendo una nueva elección de líder...');
+                    // TODO: Implementar lógica para proponer una nueva elección de líder
                 });
         } else {
             console.error('No se encontró el nodo líder.');
         }
+
+        // Registrar la URL del líder y la URL del nodo que está realizando el ping
+        console.log(`URL del líder: ${leaderNode ? leaderNode.clientUrl : 'N/A'}`);
+        console.log(`URL del nodo que está realizando el ping: ${clientUrl}`);
     }, randomTimeInSeconds * 1000);
 }
+
+
 
 // Verificar si soy el líder antes de programar el ping al nodo líder
 if (!imLeader && isAnyNodeLeader()) {
